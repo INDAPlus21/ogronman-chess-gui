@@ -30,6 +30,7 @@ struct AppState {
     board: Vec<Vec<u8>>,
     game: Game,
     turn: u8,
+    promote_piece: char,
     current_turn: String,
     current_piece: Vec<u8>
 
@@ -45,6 +46,7 @@ impl AppState {
             board: Vec::with_capacity(64),
             game: Game::new(),
             turn: 8,
+            promote_piece: 'q',
             current_turn: "White".to_string(),
             current_piece: vec![0,0,64],
         };
@@ -174,6 +176,33 @@ impl AppState {
 
     }
 
+    fn get_promote_piece(&mut self, x:f32, y:f32) -> () {
+
+        if x > (SCREEN_SIZE.0/ 2f32 + (SCREEN_SIZE.0 +350.0)/2f32) as f32 +5f32 && x <= (SCREEN_SIZE.0/ 2f32 + (SCREEN_SIZE.0 +350.0)/2f32) as f32 + 75f32 {
+            if y > ((SCREEN_SIZE.1 as f32) / 2f32) as f32 && y <= ((SCREEN_SIZE.1 as f32) / 2f32 as f32) + 80f32{
+                self.promote_piece = 'r';
+            }
+        }
+
+        if x > (SCREEN_SIZE.0/ 2f32 + (SCREEN_SIZE.0 +100.0)/2f32) as f32 +5f32 && x <= (SCREEN_SIZE.0/ 2f32 + (SCREEN_SIZE.0 +100.0)/2f32) as f32 + 75f32 {
+            if y > ((SCREEN_SIZE.1 as f32) / 2f32) as f32 && y <= ((SCREEN_SIZE.1 as f32) / 2f32 as f32) + 80f32{
+                self.promote_piece = 'q';
+            }
+        }
+
+        if x > (SCREEN_SIZE.0/ 2f32 + (SCREEN_SIZE.0 +100.0)/2f32) as f32 +5f32 && x <= (SCREEN_SIZE.0/ 2f32 + (SCREEN_SIZE.0 +100.0)/2f32) as f32 + 75f32 {
+            if y > ((SCREEN_SIZE.1 as f32 + 250f32) / 2f32) as f32  && y <= ((SCREEN_SIZE.1 as f32 + 250f32) / 2f32 as f32) + 80f32{
+                self.promote_piece = 'b';
+            }
+        }
+
+        if x > (SCREEN_SIZE.0/ 2f32 + (SCREEN_SIZE.0 +350.0)/2f32) as f32 +5f32 && x <= (SCREEN_SIZE.0/ 2f32 + (SCREEN_SIZE.0 +350.0)/2f32) as f32 + 75f32 {
+            if y > ((SCREEN_SIZE.1 as f32  + 250f32 ) / 2f32) as f32&& y <= ((SCREEN_SIZE.1 as f32 + 250f32 ) / 2f32 as f32) + 80f32{
+                self.promote_piece = 'k';
+            }
+        }
+    }
+
     fn piece_from_symbol(c:char) -> u8 {
         let mut _s = c.to_string();
         _s = _s.chars().map(|_s| match _s {      
@@ -233,7 +262,7 @@ impl AppState {
         let testS = from.clone();
         //println!("From posistion {}", from);
         //println!("To posistion {}", to);
-        let result = self.game.make_move(from, to);
+        let result = self.game.make_move(from, to.clone());
 
         
 
@@ -243,6 +272,8 @@ impl AppState {
             self.board[pos as usize][1] = self.board[self.current_piece[2] as usize][1];
             self.board[self.current_piece[2]as usize][0] = 0;
             self.board[self.current_piece[2]as usize][1] = 0;
+            
+            self.game.set_promotion(to, self.promote_piece);
 
             self.current_piece = vec![0,0,64];
             if(self.turn == 8){
@@ -294,10 +325,10 @@ impl AppState {
         let mut pos:u8 = 64;
 
         if x < 0.0 || x > SCREEN_SIZE.0 {
-            return 0;
+            return 90;
         }
         if y < 0.0 || y > SCREEN_SIZE.1 {
-            return 0;
+            return 90;
         }
 
         for rows in 0..8 {
@@ -414,6 +445,15 @@ impl event::EventHandler<GameError> for AppState {
 
         let text_dimensions_turn = turn_text.dimensions(ctx);
 
+        
+        let mut promote_text = graphics::Text::new(
+            graphics::TextFragment::from(format!("Promotion piece:")
+            )
+            .scale(graphics::PxScale     { x: 30.0, y: 30.0 }));
+
+
+        let text_dimensions_promote = promote_text.dimensions(ctx);
+
 
         if self.current_piece[2] < 64 {
             let mut possible_moves = self.game.get_possible_moves(AppState::u8_to_str(self.current_piece[2]));
@@ -486,6 +526,98 @@ impl event::EventHandler<GameError> for AppState {
                 y: (text_dimensions_turn.h as f32+90.0) / 2f32 as f32,
             })).expect("Failed to draw text.");
 
+        graphics::draw(ctx, &promote_text, graphics::DrawParam::default().color([0.0, 0.0, 0.0, 1.0].into())
+            .dest(ggez::mint::Point2 {
+                x: ((SCREEN_SIZE.0 - text_dimensions_promote.w as f32) / 2f32 + (SCREEN_SIZE.0 +300.0)/2f32  ) as f32,
+                y: (text_dimensions_promote.h as f32+600.0) / 2f32 as f32,
+            })).expect("Failed to draw text.");
+
+
+
+        let queen_tile = graphics::Mesh::new_rectangle(ctx, 
+                graphics::DrawMode::fill(), 
+                graphics::Rect::new_i32(
+                    (SCREEN_SIZE.0/ 2f32 + (SCREEN_SIZE.0 +100.0)/2f32) as i32,
+                    ((SCREEN_SIZE.1 as f32) / 2f32) as i32,
+                    90 as i32,
+                    90 as i32,
+                ), if self.promote_piece == 'q' { WHITE } 
+                else { BLACK },).expect("Failed to create tile.");
+        
+        // draw Square
+        graphics::draw(ctx, &queen_tile, graphics::DrawParam::default()).expect("Failed to draw tile.");    
+
+        let rook_tile = graphics::Mesh::new_rectangle(ctx, 
+            graphics::DrawMode::fill(), 
+            graphics::Rect::new_i32(
+                (SCREEN_SIZE.0/ 2f32 + (SCREEN_SIZE.0 +350.0)/2f32) as i32,
+                ((SCREEN_SIZE.1 as f32) / 2f32) as i32,
+                90 as i32,
+                90 as i32,
+            ), if self.promote_piece == 'r' { WHITE } 
+            else { BLACK },).expect("Failed to create tile.");
+    
+        // draw Square
+        graphics::draw(ctx, &rook_tile, graphics::DrawParam::default()).expect("Failed to draw tile.");   
+
+        let bishop_tile = graphics::Mesh::new_rectangle(ctx, 
+            graphics::DrawMode::fill(), 
+            graphics::Rect::new_i32(
+            (   SCREEN_SIZE.0/ 2f32 + (SCREEN_SIZE.0 +100.0)/2f32) as i32,
+                ((SCREEN_SIZE.1 as f32 +250f32) / 2f32) as i32,
+                90 as i32,
+                90 as i32,
+            ), if self.promote_piece == 'b' { WHITE } 
+            else { BLACK },).expect("Failed to create tile.");
+
+        // draw Square
+        graphics::draw(ctx, &bishop_tile, graphics::DrawParam::default()).expect("Failed to draw tile.");   
+
+        let knight_tile = graphics::Mesh::new_rectangle(ctx, 
+            graphics::DrawMode::fill(), 
+            graphics::Rect::new_i32(
+                (SCREEN_SIZE.0/ 2f32 + (SCREEN_SIZE.0 +350.0)/2f32) as i32,
+                ((SCREEN_SIZE.1 as f32 + 250f32) / 2f32) as i32,
+                90 as i32,
+                90 as i32,
+            ), if self.promote_piece == 'k' { WHITE } 
+            else { BLACK },).expect("Failed to create tile.");
+
+        // draw Square
+        graphics::draw(ctx, &knight_tile, graphics::DrawParam::default()).expect("Failed to draw tile.");   
+
+        //Draw promote queen
+        graphics::draw(ctx, self.sprites.get(&(self.turn, 5  )).unwrap(), graphics::DrawParam::default()
+            .scale([2.0, 2.0])  // Tile size is 90 pixels, while image sizes are 45 pixels.
+            .dest(
+                [(SCREEN_SIZE.0/ 2f32 + (SCREEN_SIZE.0 +100.0)/2f32  ) as f32, (SCREEN_SIZE.1 as f32) / 2f32 as f32],
+                )
+            ).expect("Failed to draw piece.");
+
+        //Draw promote rook
+        graphics::draw(ctx, self.sprites.get(&(self.turn, 4 )).unwrap(), graphics::DrawParam::default()
+            .scale([2.0, 2.0])  // Tile size is 90 pixels, while image sizes are 45 pixels.
+            .dest(
+                [(SCREEN_SIZE.0/ 2f32 + (SCREEN_SIZE.0 +350.0)/2f32  ) as f32, (SCREEN_SIZE.1 as f32) / 2f32 as f32],
+                )
+            ).expect("Failed to draw piece.");
+
+        //Draw promote bishop
+        graphics::draw(ctx, self.sprites.get(&(self.turn, 3 )).unwrap(), graphics::DrawParam::default()
+            .scale([2.0, 2.0])  // Tile size is 90 pixels, while image sizes are 45 pixels.
+            .dest(
+                [(SCREEN_SIZE.0/ 2f32 + (SCREEN_SIZE.0 +100.0)/2f32  ) as f32, (SCREEN_SIZE.1 as f32+250.0) / 2f32 as f32],
+                )
+            ).expect("Failed to draw piece.");
+
+        //Draw promote knight
+        graphics::draw(ctx, self.sprites.get(&(self.turn, 2 )).unwrap(), graphics::DrawParam::default()
+            .scale([2.0, 2.0])  // Tile size is 90 pixels, while image sizes are 45 pixels.
+            .dest(
+                [(SCREEN_SIZE.0/ 2f32 + (SCREEN_SIZE.0 +350.0)/2f32  ) as f32, (SCREEN_SIZE.1 as f32+250.0) / 2f32 as f32],
+                )
+            ).expect("Failed to draw piece.");
+
         // render updated graphics
         graphics::present(ctx).expect("Failed to update graphics.");
 
@@ -497,16 +629,20 @@ impl event::EventHandler<GameError> for AppState {
     fn mouse_button_up_event(&mut self, ctx: &mut Context, button: event::MouseButton, x: f32, y: f32) {
         if button == event::MouseButton::Left {
             let pos = self.get_square(x,y);
-            //println!("Clicked piece is: {:#?}",self.board[pos as usize]);
-            if self.turn == self.board[pos as usize][0] {
-                //println!("Changing selected piece");
-                self.current_piece[0] = self.board[pos as usize][0];
-                self.current_piece[1] = self.board[pos as usize][1];
-                self.current_piece[2] = pos;
-                
+            if pos == 90 {
+                self.get_promote_piece(x,y);
             }else{
-                if self.current_piece[0] != 0 {
-                    self.move_piece(pos);
+                //println!("Clicked piece is: {:#?}",self.board[pos as usize]);
+                if self.turn == self.board[pos as usize][0] {
+                    //println!("Changing selected piece");
+                    self.current_piece[0] = self.board[pos as usize][0];
+                    self.current_piece[1] = self.board[pos as usize][1];
+                    self.current_piece[2] = pos;
+                
+                }else{
+                    if self.current_piece[0] != 0 {
+                        self.move_piece(pos);
+                    }
                 }
             }
 
